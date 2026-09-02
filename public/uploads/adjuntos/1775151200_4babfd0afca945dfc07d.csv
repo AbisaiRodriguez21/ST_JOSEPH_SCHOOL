@@ -1,0 +1,77 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.2
+-- https://www.phpmyadmin.net/
+--
+-- Servidor: localhost:3306
+-- Tiempo de generación: 02-04-2026 a las 09:22:27
+-- Versión del servidor: 10.6.24-MariaDB-cll-lve
+-- Versión de PHP: 8.3.30
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Base de datos: `hidei`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `correos`
+--
+
+CREATE TABLE `correos` (
+  `id` int(11) NOT NULL,
+  `emisor_id` int(11) NOT NULL,
+  `grado_destinario_id` int(11) DEFAULT NULL COMMENT 'ID del grado si se envi? a un grupo',
+  `fecha_envio` datetime DEFAULT current_timestamp(),
+  `asunto` varchar(255) NOT NULL,
+  `para` text NOT NULL COMMENT 'Lista de correos o descripci?n del destinatario',
+  `mensaje` longtext NOT NULL,
+  `adjunto` varchar(255) DEFAULT NULL COMMENT 'Ruta del archivo',
+  `estado` varchar(50) DEFAULT 'enviado' COMMENT 'enviado, borrador, papelera',
+  `destacado` tinyint(1) DEFAULT 0,
+  `eliminado` tinyint(1) DEFAULT 0,
+  `archivado` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+--
+-- Volcado de datos para la tabla `correos`
+--
+
+INSERT INTO `correos` (`id`, `emisor_id`, `grado_destinario_id`, `fecha_envio`, `asunto`, `para`, `mensaje`, `adjunto`, `estado`, `destacado`, `eliminado`, `archivado`) VALUES
+(5, 1, NULL, '2026-03-27 10:55:23', 'Prueba', 'cortes17042003@gmail.com', 'Este es el cuerpo del mensaje ', 'uploads/adjuntos/1774630521_ca1a8e352937654573b1.bin', 'enviado', 0, 0, 0),
+(6, 1, NULL, '2026-03-27 16:04:42', 'prueba', 'cortes17042003@gmail.com', 'este es un mensaje ', NULL, 'enviado', 0, 0, 0);
+
+--
+-- Índices para tablas volcadas
+--
+
+--
+-- Indices de la tabla `correos`
+--
+ALTER TABLE `correos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_correo_emisor` (`emisor_id`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `correos`
+--
+ALTER TABLE `correos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

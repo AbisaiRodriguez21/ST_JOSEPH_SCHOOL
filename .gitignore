@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------
+# Entorno / secretos  (NUNCA subir)
+# ---------------------------------------------------------------
+.env
+*.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------
+# Dependencias (se regeneran con composer / npm)
+# ---------------------------------------------------------------
+/vendor/
+/node_modules/
+
+# ---------------------------------------------------------------
+# CodeIgniter 4 - archivos generados en runtime
+# ---------------------------------------------------------------
+/writable/cache/*
+!/writable/cache/index.html
+/writable/logs/*
+!/writable/logs/index.html
+/writable/session/*
+!/writable/session/index.html
+/writable/uploads/*
+!/writable/uploads/index.html
+/writable/debugbar/*
+/writable/*.db
+
+# Builds de tests
+/build/
+/phpunit*.xml
+!/phpunit.xml.dist
+/tests/coverage*
+
+# ---------------------------------------------------------------
+# Logs / errores
+# ---------------------------------------------------------------
+error_log
+*.log
+
+# ---------------------------------------------------------------
+# Sistema operativo / editores
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+__MACOSX/
+
+# ---------------------------------------------------------------
+# Lockfiles de gestores que NO usas (deja solo el que uses)
+# ---------------------------------------------------------------
+# Si usas npm, conserva package-lock.json y puedes ignorar los otros:
+# bun.lockb
+# yarn.lock
