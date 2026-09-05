@@ -190,8 +190,14 @@ $routes->group('', ['filter' => 'adminAuth'], function ($routes) {
     // Cambio de Grado
     $routes->get('cambio-grado', 'CambioGradoController::index');
     $routes->post('cambio-grado/baja', 'CambioGradoController::darBaja');
-    $routes->get('cambio-grado/get-datos', 'CambioGradoController::getDatosModal'); 
+    $routes->get('cambio-grado/get-datos', 'CambioGradoController::getDatosModal');
     $routes->post('cambio-grado/activar', 'CambioGradoController::activar');
+
+    // Activación de Ciclo (alta masiva de alumnos al nuevo ciclo desde archivo)
+    $routes->get('activacion-ciclo', 'Admin\ActivacionCiclo::index');
+    $routes->post('activacion-ciclo/previsualizar', 'Admin\ActivacionCiclo::previsualizar');
+    $routes->get('activacion-ciclo/reporte', 'Admin\ActivacionCiclo::reporte');
+    $routes->post('activacion-ciclo/aplicar', 'Admin\ActivacionCiclo::aplicar');
 
     // Configuración Global
     $routes->get('globalconfig/getDatos/(:num)', 'GlobalConfig::getDatos/$1');

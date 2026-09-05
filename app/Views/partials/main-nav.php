@@ -300,6 +300,12 @@ if ($nivelUsuario == 1 || $nivelUsuario == 2) {
                         <span class="nav-text"> Cambio de Grado </span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= base_url('activacion-ciclo') ?>">
+                        <span class="nav-icon"><iconify-icon icon="solar:refresh-circle-broken"></iconify-icon></span>
+                        <span class="nav-text"> Activación de Ciclo </span>
+                    </a>
+                </li>
                 <li class="nav-item mt-4">
                     <a class="nav-link text-danger" href="<?= base_url('logout') ?>">
                         <span class="nav-icon"><iconify-icon icon="solar:logout-broken"></iconify-icon></span>

@@ -240,11 +240,17 @@
         // =======================================================
         document.getElementById('btn-confirmar-activacion').addEventListener('click', function() {
             const form = document.getElementById('form-activar');
-            
+            const btn  = this;
+
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
             }
+
+            // Bloquear el botón para evitar doble clic (que duplicaría el pago)
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
 
             const formData = new FormData(form);
 
@@ -258,11 +264,24 @@
                 if (data.status === 'success') {
                     modalActivar.hide();
                     Swal.fire({
-                        icon: 'success', title: '¡Alumno Activado!', text: data.msg, timer: 2000, showConfirmButton: false
+                        icon: 'success', title: '¡Alumno Activado!', text: data.msg, timer: 2500, showConfirmButton: false
                     }).then(() => location.reload());
                 } else {
+                    btn.disabled = false;
+                    btn.innerHTML = textoOriginal;
                     Swal.fire('Error', data.msg, 'error');
                 }
+            })
+            .catch(err => {
+                // Si la petición falló (red/servidor), avisar y recargar para ver el estado real,
+                // ya que el alumno pudo haberse activado en el servidor.
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se recibió respuesta',
+                    text: 'Puede que el alumno sí se haya activado. Se recargará la lista para verificar antes de reintentar (evita duplicar el pago).',
+                }).then(() => location.reload());
             });
         });
 

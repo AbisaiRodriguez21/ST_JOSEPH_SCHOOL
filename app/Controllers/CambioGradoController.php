@@ -113,11 +113,15 @@ class CambioGradoController extends BaseController
             
             $msgExtra = '';
             if ($pagoRow) {
-                // Pasamos el ID del pago y también el correo que se escribió en el Modal
-                $correoModal = $request->getPost('email');
-                $enviado = $this->_enviarCorreoConfirmacion($pagoRow['id_pago'], $correoModal);
-                
-                if(!$enviado){
+                // El correo es "best-effort": si falla o se cuelga, la activación NO se rompe.
+                try {
+                    $correoModal = $request->getPost('email');
+                    $enviado = $this->_enviarCorreoConfirmacion($pagoRow['id_pago'], $correoModal);
+                    if (!$enviado) {
+                        $msgExtra = ' (El alumno se activó, pero no se pudo enviar el correo)';
+                    }
+                } catch (\Throwable $e) {
+                    log_message('error', 'Correo de reactivación falló: ' . $e->getMessage());
                     $msgExtra = ' (El alumno se activó, pero hubo un problema al enviar el correo)';
                 }
             }
@@ -146,6 +150,10 @@ class CambioGradoController extends BaseController
     // =========================================================================
     private function _enviarCorreoConfirmacion($idPago, $correoExtra = null)
     {
+        // Limita cuánto espera cualquier conexión remota (logo del PDF, SMTP):
+        // si no hay internet/SMTP, falla rápido en vez de colgar toda la petición.
+        @ini_set('default_socket_timeout', '8');
+
         $db = \Config\Database::connect();
         
         $pago = $db->table('pago')->where('id_pago', $idPago)->get()->getRowArray();
@@ -177,6 +185,7 @@ class CambioGradoController extends BaseController
             'SMTPPass'   => env('SMTP_PASS'), 
             'SMTPPort'   => 465,
             'SMTPCrypto' => 'ssl',
+            'SMTPTimeout' => 8, // no esperar más de 8s por el servidor de correo
             'mailType'   => 'html',
             'charset'    => 'utf-8',
             'wordWrap'   => true,

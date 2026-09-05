@@ -77,13 +77,15 @@ class BoletaModel extends Model
      * Obtiene la configuración activa (Ciclo y Mes)
      * Se conecta a 'mesycicloactivo' 
      */
-    public function getCicloActivo()
+    public function getCicloActivo($idConfig = 1)
     {
+        // $idConfig define la config por NIVEL: 1=Primaria/Secundaria, 2=Bachillerato, 3=Kinder.
+        // Antes estaba fijo en 1, por eso todas las boletas leían el ciclo de Primaria.
         $builder = $this->db->table('mesycicloactivo');
         $builder->select('mesycicloactivo.id_ciclo, cicloescolar.nombreCicloEscolar, mesycicloactivo.id_mes');
         $builder->join('cicloescolar', 'mesycicloactivo.id_ciclo = cicloescolar.id_cicloEscolar');
-        $builder->where('mesycicloactivo.id', 1);
-        
+        $builder->where('mesycicloactivo.id', $idConfig);
+
         return $builder->get()->getRowArray();
     }
 

@@ -22,17 +22,27 @@ class Boleta extends BaseController
     public function ver($id_grado, $id_alumno)
     {
         $model = new BoletaModel();
-        
+
         // Datos básicos generales
         $alumno = $model->getDatosAlumno($id_alumno);
-        $cicloInfo = $model->getCicloActivo();
-        
-        if (!$cicloInfo) { die("Error: No hay ciclo escolar activo configurado."); }
 
         $nombreGrado = strtolower($alumno['nombreGrado']);
 
+        // Config de ciclo/mes activo SEGÚN EL NIVEL del alumno
+        // (1=Primaria/Secundaria, 2=Bachillerato, 3=Kinder/Maternal)
+        if (strpos($nombreGrado, 'bachillerato') !== false || strpos($nombreGrado, 'prepa') !== false) {
+            $idConfig = 2;
+        } elseif (strpos($nombreGrado, 'kinder') !== false || strpos($nombreGrado, 'maternal') !== false) {
+            $idConfig = 3;
+        } else {
+            $idConfig = 1;
+        }
+        $cicloInfo = $model->getCicloActivo($idConfig);
+
+        if (!$cicloInfo) { die("Error: No hay ciclo escolar activo configurado."); }
+
         // --- ENRUTAMIENTO SEGÚN NIVEL EDUCATIVO ---
-        
+
         // A) Secundaria
         if (strpos($nombreGrado, 'secundaria') !== false) {
             return $this->_procesarSecundaria($model, $id_grado, $id_alumno, $alumno, $cicloInfo);
