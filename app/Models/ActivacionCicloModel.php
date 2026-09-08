@@ -321,17 +321,20 @@ class ActivacionCicloModel extends Model
         $activados = 0;
         $boletas   = 0;
 
+        // Contraseña default CIFRADA (se calcula una sola vez, no en cada alumno).
+        $passDefault = password_hash('123456789', PASSWORD_DEFAULT);
+
         foreach ($listos as $a) {
             $idUsr  = (int) $a['id_usr'];
             $idGrado = (int) $a['id_grado'];
 
-            // 1. Activar alumno (igual que recibe_excel.php)
+            // 1. Activar alumno (igual que recibe_excel.php, pero con contraseña cifrada)
             $this->db->table('usr')->where('id', $idUsr)->update([
                 'generacionactiva' => $idCiclo,
                 'activo'           => 1,
                 'estatus'          => 1,
                 'grado'            => $idGrado,
-                'pass'             => '123456789',
+                'pass'             => $passDefault,
             ]);
             $activados++;
 

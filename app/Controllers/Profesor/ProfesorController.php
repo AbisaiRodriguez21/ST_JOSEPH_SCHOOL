@@ -138,6 +138,26 @@ class ProfesorController extends BaseController
         $id_mes     = $this->request->getPost('id_mes');
         $valor      = $this->request->getPost('valor');
 
+        // SEGURIDAD (anti-IDOR): validar que ESTA materia+grado SÍ la imparte
+        // este profesor. Sin esto, podría inyectar cualquier id_materia/id_grado
+        // desde el inspector y calificar a alumnos que no son suyos.
+        $profesorModel = new \App\Models\ProfesorModel();
+        $misMaterias   = $profesorModel->getMateriasDashboardProfesor($session->get('id'));
+        $tieneAcceso   = false;
+        foreach ($misMaterias as $mm) {
+            if ((string) $mm['id_materia'] === (string) $id_materia
+                && (string) $mm['id_grado'] === (string) $id_grado) {
+                $tieneAcceso = true;
+                break;
+            }
+        }
+        if (!$tieneAcceso) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'error',
+                'msg'    => 'Acceso denegado: no impartes esa materia/grado.'
+            ]);
+        }
+
         $resultado = $calificacionesModel->guardarCalificacion(
             $id_alumno,
             $id_grado,

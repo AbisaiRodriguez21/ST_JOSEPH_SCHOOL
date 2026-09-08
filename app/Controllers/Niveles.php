@@ -28,6 +28,12 @@ class Niveles extends BaseController
         // 2. Obtener datos del modelo
         $usuarios = $model->getUsuarios($columna, $orden, $busqueda, $porPagina);
 
+        // SEGURIDAD: nunca mandar la contraseña al frontend (ni siquiera cifrada)
+        foreach ($usuarios as &$__u) {
+            if (is_array($__u)) { unset($__u['pass']); }
+        }
+        unset($__u);
+
         // 3. Cálculos matemáticos para "Mostrando X a Y de Z"
         $pager = $model->pager;
         $total = $pager->getTotal();
@@ -79,9 +85,9 @@ class Niveles extends BaseController
         }
 
         $model = new NivelesModel();
-        
-        // Guardamos tal cual
-        if ($model->update($idUsuario, ['pass' => $newPass])) {
+
+        // Guardamos la contraseña CIFRADA (nunca en texto plano)
+        if ($model->update($idUsuario, ['pass' => password_hash($newPass, PASSWORD_DEFAULT)])) {
             return $this->response->setJSON(['status' => 'success']);
         } else {
             return $this->response->setJSON(['status' => 'error', 'msg' => 'Error al actualizar']);

@@ -64,7 +64,7 @@
                                                     <td>
                                                         <span class="badge badge-soft-success font-size-11 m-1"><?= esc($p['nombre_nivel']) ?></span>
                                                     </td>
-                                                    <td class="text-muted"><?= esc($p['pass']) ?></td>
+                                                    <td class="text-muted"><span title="Oculta por seguridad">••••••••</span></td>
                                                     
                                                     <td class="text-center">
                                                         <div class="btn-group" role="group">

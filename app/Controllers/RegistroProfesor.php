@@ -41,14 +41,14 @@ class RegistroProfesor extends BaseController
         $request = \Config\Services::request();
         $model   = new RegistroProfesorModel();
 
-        // Recibir contraseña en texto plano y asignarla directamente
+        // Recibir contraseña y guardarla CIFRADA
         $passwordPlana = $request->getPost('pass');
 
         $data = [
             'generacionactiva' => $request->getPost('cescolar'),
             'Nombre'           => $request->getPost('Nombre'),
             'email'            => $request->getPost('email'),
-            'pass'             => $passwordPlana, 
+            'pass'             => password_hash($passwordPlana, PASSWORD_DEFAULT),
             'nivel'            => 5, 
             'sexo_alum'        => $request->getPost('sexo_alum'),
             'estado'           => $request->getPost('Estado'),

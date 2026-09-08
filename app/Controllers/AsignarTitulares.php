@@ -50,7 +50,7 @@ class AsignarTitulares extends BaseController
             'ap_Alumno' => $request->getPost('paterno'),
             'am_Alumno' => $request->getPost('materno'),
             'email'     => $request->getPost('email'),
-            'pass'      => $request->getPost('password'),
+            'pass'      => password_hash($request->getPost('password'), PASSWORD_DEFAULT),
             'nivel'     => 9, // Se guarda como Titular por defecto 
             'nivelT'    => $request->getPost('nivelT'),
             'activo'    => 1,  

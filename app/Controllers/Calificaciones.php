@@ -136,6 +136,18 @@ class Calificaciones extends BaseController
         $session = session();
         if (!$session->has('id')) return redirect()->to('/login');
 
+        // SEGURIDAD (anti-IDOR por URL): un titular SOLO puede exportar su propio
+        // grupo; admin/director pueden cualquiera; nadie más entra.
+        $nivel = (int) $session->get('nivel');
+        if ($nivel === 9) {
+            if ((int) $id_grado !== (int) $session->get('nivelT')) {
+                return redirect()->to(base_url('titular/dashboard'))
+                                 ->with('error', 'Acceso denegado: ese grado no es tu grupo.');
+            }
+        } elseif (!in_array($nivel, [1, 2], true)) {
+            return redirect()->to(base_url('login'))->with('error', 'Acceso denegado.');
+        }
+
         // 1. Recibir el Mes Customizado
         $mes_custom = $this->request->getGet('mes_custom');
 
@@ -345,6 +357,17 @@ class Calificaciones extends BaseController
         // Datos esperados por la vista
         $id_grado_esperado = $this->request->getPost('id_grado_actual');
         $id_mes_esperado   = $this->request->getPost('id_mes_esperado');
+
+        // SEGURIDAD (anti-IDOR): un titular SOLO puede importar a su propio grupo;
+        // admin/director cualquiera; nadie más.
+        $nivel = (int) $session->get('nivel');
+        if ($nivel === 9) {
+            if ((int) $id_grado_esperado !== (int) $session->get('nivelT')) {
+                return redirect()->back()->with('error', 'Acceso denegado: ese grado no es tu grupo.');
+            }
+        } elseif (!in_array($nivel, [1, 2], true)) {
+            return redirect()->to(base_url('login'))->with('error', 'Acceso denegado.');
+        }
 
         $handle = fopen($file->getTempName(), 'r');
         if (!$handle) return redirect()->back()->with('error', 'No se pudo leer el archivo.');

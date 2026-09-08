@@ -37,11 +37,13 @@ $miNivel = session()->get('nivel');
                             // 2. El usuario de la fila NO es Nivel 1 (Otro Super Admin)
                             if ($miNivel == 1 && $usr['nivel'] != 1): 
                             ?>
-                                <input type="text" 
-                                       class="form-control form-control-sm " 
+                                <input type="text"
+                                       class="form-control form-control-sm"
                                        style="min-width: 120px;"
-                                       value="<?= esc($usr['pass']) ?>" 
-                                       data-original="<?= esc($usr['pass']) ?>"
+                                       value=""
+                                       data-original=""
+                                       placeholder="Escribe para cambiar"
+                                       autocomplete="new-password"
                                        onblur="guardarPass(this, <?= $usr['id'] ?>)"
                                        onkeydown="if(event.key === 'Enter') this.blur()">
                             <?php else: ?>

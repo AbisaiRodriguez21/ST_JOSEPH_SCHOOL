@@ -129,9 +129,9 @@ class Alumnos extends BaseController
             'extra'          => $this->request->getPost('extra'),
             
             // Fijos
-            'pass'           => '123456789', 
-            'nivel'          => 7, 
-            'activo'         => 1 
+            'pass'           => password_hash('123456789', PASSWORD_DEFAULT),
+            'nivel'          => 7,
+            'activo'         => 1
         ];
     }
 

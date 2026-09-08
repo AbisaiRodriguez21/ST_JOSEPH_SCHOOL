@@ -59,8 +59,7 @@
                                                             <strong><?= esc($alum['ap_Alumno'] . ' ' . $alum['am_Alumno'] . ' ' . $alum['Nombre']) ?></strong>
                                                         </td>
                                                         <td class="hidden-xs text-muted">
-                                                            <?= esc($alum['email']) ?> <br>
-                                                            <small><i class="bx bx-key"></i> <?= esc($alum['pass']) ?></small>
+                                                            <?= esc($alum['email']) ?>
                                                         </td>
                                                         
                                                         <td class="hidden-xs">

@@ -62,7 +62,7 @@ class Dashboard extends BaseController
 
         $userModel = new UsuarioModel();
         
-        $update = $userModel->update($idUsuario, ['pass' => $nuevoPass]);
+        $update = $userModel->update($idUsuario, ['pass' => password_hash($nuevoPass, PASSWORD_DEFAULT)]);
 
         if ($update) {
             return $this->response->setJSON(['status' => 'success', 'msg' => '¡Guardado! Cerrando ventana...']);
