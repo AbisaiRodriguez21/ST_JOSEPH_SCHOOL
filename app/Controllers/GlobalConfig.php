@@ -9,6 +9,10 @@ class GlobalConfig extends BaseController
     // Cargar datos para llenar el modal
     public function getDatos($id_config)
     {
+        // Solo por AJAX (no se puede abrir pegando la URL en el navegador)
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setBody('Prohibido');
+        }
         if (session()->get('nivel') != 1) {
             return $this->response->setJSON(['error' => 'No autorizado']);
         }

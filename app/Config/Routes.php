@@ -36,8 +36,9 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->get('correo', 'Correo::index');          
     $routes->get('correo/redactar', 'Correo::redactar'); 
     $routes->post('correo/enviar', 'Correo::enviar');    
-    $routes->get('correo/ver/(:num)', 'Correo::ver/$1'); 
-    $routes->get('correo/ajax_ver/(:num)', 'Correo::ajax_ver/$1'); 
+    $routes->get('correo/ver/(:num)', 'Correo::ver/$1');
+    $routes->get('correo/ajax_ver/(:num)', 'Correo::ajax_ver/$1');
+    $routes->get('correo/adjunto/(:num)', 'Archivo::adjunto/$1'); // adjuntos privados (con login)
     $routes->post('correo/acciones', 'Correo::acciones_masivas');
 
     // Rutas del Alumno

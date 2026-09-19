@@ -4,6 +4,9 @@
         $id = (int) $id;
         return $nombresGrado[$id] ?? ('Grado ' . $id);
     };
+    $totalConMatricula = count($r['listos']) + count($r['yaActivos'] ?? []) + count($r['noEncontradas'])
+                       + count($r['gradoNoReconocido']) + count($r['duplicadas']);
+    $totalGeneral = $totalConMatricula + count($r['pendientes'] ?? []);
 ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="light" data-topbar-color="light" data-menu-color="light">
@@ -34,6 +37,13 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="alert alert-secondary">
+                    <strong>Total de alumnos detectados en los archivos: <?= $totalGeneral ?></strong>
+                    (<?= $totalConMatricula ?> con matrícula + <?= count($r['pendientes'] ?? []) ?> sin matrícula, pendientes de alta manual).
+                    Compáralo contra el total real de tus archivos de origen — si no coincide, algún alumno se está
+                    perdiendo en el camino.
                 </div>
 
                 <!-- Tarjetas resumen -->
@@ -104,8 +114,10 @@
                                                         <td><?= esc($gname($a['grado_actual'])) ?></td>
                                                         <td>
                                                             <span class="badge bg-success"><?= esc($gname($a['id_grado'])) ?></span>
-                                                            <?php if (!empty($a['revuelto'])): ?>
-                                                                <span class="badge bg-primary" title="Repartido entre grupo A y B por subir de primaria">repartido A/B</span>
+                                                            <?php if (!empty($a['grupo_real'])): ?>
+                                                                <span class="badge bg-info" title="Grupo tomado de la lista real que mando la escuela">grupo real</span>
+                                                            <?php elseif (!empty($a['revuelto'])): ?>
+                                                                <span class="badge bg-primary" title="No vino en ninguna lista de grupos: repartido entre A y B al azar">repartido A/B</span>
                                                             <?php endif; ?>
                                                         </td>
                                                     </tr>

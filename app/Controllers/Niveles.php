@@ -17,6 +17,10 @@ class Niveles extends BaseController
     public function fetch()
     {
         $request = \Config\Services::request();
+        // Solo por AJAX (no se puede abrir pegando la URL en el navegador)
+        if (!$request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setBody('Prohibido');
+        }
         $model = new NivelesModel();
 
         // 1. Obtener parámetros de la URL AJAX

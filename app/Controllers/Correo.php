@@ -139,16 +139,22 @@ class Correo extends BaseController
      */
     public function ajax_ver($id)
     {
+        // Solo por AJAX (no se puede abrir pegando la URL en el navegador)
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setBody('Prohibido');
+        }
+
         $model = new CorreoModel();
         $correo = $model->find($id);
 
         if ($correo) {
             // Formateamos la fecha para que se vea bien
             $correo['fecha_formateada'] = date('d M Y, h:i A', strtotime($correo['fecha_envio']));
-            
-            // Si hay adjunto, preparamos la URL completa
-            $correo['url_adjunto'] = $correo['adjunto'] ? base_url($correo['adjunto']) : null;
-            
+
+            // Adjunto servido por controlador con login (no URL directa al archivo)
+            $correo['url_adjunto'] = $correo['adjunto'] ? base_url('correo/adjunto/' . $correo['id']) : null;
+            unset($correo['adjunto']); // no exponer la ruta interna del archivo
+
             return $this->response->setJSON($correo);
         } else {
             return $this->response->setJSON(['error' => 'Correo no encontrado']);
@@ -179,7 +185,8 @@ class Correo extends BaseController
 
         if ($archivo && $archivo->isValid() && !$archivo->hasMoved()) {
             $nombreNuevo = $archivo->getRandomName();
-            $archivo->move(ROOTPATH . 'public/uploads/adjuntos', $nombreNuevo);
+            // Guardar FUERA de public/ para que no sea accesible por URL directa.
+            $archivo->move(WRITEPATH . 'uploads/adjuntos', $nombreNuevo);
             $rutaAdjunto = 'uploads/adjuntos/' . $nombreNuevo;
         }
 

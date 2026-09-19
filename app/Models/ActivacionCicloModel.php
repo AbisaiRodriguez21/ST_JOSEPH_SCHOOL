@@ -1,6 +1,7 @@
 <?php namespace App\Models;
 
 use CodeIgniter\Model;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * ActivacionCicloModel
@@ -59,6 +60,29 @@ class ActivacionCicloModel extends Model
     {
         $row = $this->db->table('mesycicloactivo')->where('id', 1)->get()->getRow();
         return $row ? (int) $row->id_ciclo : null;
+    }
+
+    /**
+     * Ciclo que corresponde HOY segun el calendario escolar (no segun lo que
+     * diga mesycicloactivo, que puede quedar desactualizado): a partir de
+     * agosto es "esteAño-siguiente"; antes de agosto es "añoPasado-este".
+     * Devuelve el id_cicloEscolar cuyo nombre coincide, o null si el catalogo
+     * todavia no tiene ese ciclo dado de alta.
+     */
+    public function getCicloSugeridoPorFecha()
+    {
+        $hoy = new \DateTime();
+        $anio = (int) $hoy->format('Y');
+        $mes = (int) $hoy->format('n');
+
+        $nombreEsperado = ($mes >= 8) ? "$anio-" . ($anio + 1) : ($anio - 1) . "-$anio";
+
+        foreach ($this->getCiclos() as $c) {
+            if (trim($c['nombreCicloEscolar']) === $nombreEsperado) {
+                return (int) $c['id_cicloEscolar'];
+            }
+        }
+        return null;
     }
 
     /** Mapa id_grado => nombreGrado (para mostrar nombres en la vista/informe). */
@@ -127,18 +151,36 @@ class ActivacionCicloModel extends Model
 
         while (($fila = fgetcsv($handle)) !== false) {
             $matricula = null;
-            $esPendiente = false;
+            $seccionInfo = null;
+            $celdasNoVacias = [];
+            $esFilaEncabezado = false;
 
-            // 1. Buscar una matrícula exacta (4 díg + A/a + 3-6 díg) en la fila
+            // Un solo recorrido de la fila: busca matricula valida, encabezado
+            // de seccion, y de paso junta las celdas con contenido (por si la
+            // fila resulta ser un alumno sin matricula capturable).
             foreach ($fila as $celda) {
                 $val = $this->limpiarCelda($celda);
-                if (preg_match('/^\d{4}[Aa]\d{3,6}$/', $val)) {
+                if ($val === '') {
+                    continue;
+                }
+                $celdasNoVacias[] = $val;
+
+                if (in_array(strtoupper($val), ['CURP', 'NOMBRE COMPLETO ALUMNO', 'MATRICULA'], true)) {
+                    $esFilaEncabezado = true; // fila de encabezados de columnas, no es alumno
+                }
+                if ($matricula === null && preg_match('/^\d{4}[Aa]\d{3,6}$/', $val)) {
                     $matricula = strtoupper($val);
-                    break;
                 }
-                if (strtoupper($val) === 'PENDIENTE') {
-                    $esPendiente = true; // una sola marca por fila
+                if ($seccionInfo === null) {
+                    $info = $this->interpretarSeccion($celda);
+                    if ($info !== null) {
+                        $seccionInfo = ['texto' => $val, 'info' => $info];
+                    }
                 }
+            }
+
+            if ($esFilaEncabezado) {
+                continue;
             }
 
             if ($matricula !== null) {
@@ -151,29 +193,10 @@ class ActivacionCicloModel extends Model
                 continue;
             }
 
-            // 1b. Fila de alumno SIN matrícula (PENDIENTE) -> capturar sus datos para llenarlo a mano
-            if ($esPendiente) {
-                $datos = [];
-                foreach ($fila as $celda) {
-                    $v = $this->limpiarCelda($celda);
-                    if ($v === '' || strtoupper($v) === 'PENDIENTE') continue;
-                    if (preg_match('/^\d{1,2}$/', $v)) continue; // saltar índice/año/mes/día cortos
-                    $datos[] = $v;
-                }
-                $pendientes[] = [
-                    'seccion' => $seccion,
-                    'datos'   => implode(' | ', $datos),
-                ];
-                continue;
-            }
-
-            // 2. ¿Fila de sección de grado?
-            foreach ($fila as $celda) {
-                $info = $this->interpretarSeccion($celda);
-                if ($info === null) {
-                    continue;
-                }
-                $seccion = $this->limpiarCelda($celda);
+            // ¿Fila de sección de grado?
+            if ($seccionInfo !== null) {
+                $seccion = $seccionInfo['texto'];
+                $info = $seccionInfo['info'];
                 if ($info['tipo'] === 'fijo') {
                     $idGrado = $info['id'];
                     $secNivel = null;
@@ -184,7 +207,27 @@ class ActivacionCicloModel extends Model
                     $idGrado = null;
                     $secNivel = null;
                 }
-                break;
+                continue;
+            }
+
+            // Ni matricula ni encabezado de sección: si la fila tiene contenido
+            // real, es un alumno SIN matrícula capturable -- diga o no la celda
+            // "PENDIENTE" literalmente (p. ej. cuando el campo simplemente se
+            // dejó en blanco al capturar el Excel de matrículas).
+            if (count($celdasNoVacias) >= 2) {
+                $datos = [];
+                foreach ($celdasNoVacias as $v) {
+                    if (strtoupper($v) === 'PENDIENTE') continue;
+                    if (preg_match('/^\d{1,2}$/', $v)) continue; // saltar índice/año/mes/día cortos
+                    if (preg_match('/^(N\.I\.|SIN CURP)$/i', $v)) continue;
+                    $datos[] = $v;
+                }
+                if (!empty($datos)) {
+                    $pendientes[] = [
+                        'seccion' => $seccion,
+                        'datos'   => implode(' | ', $datos),
+                    ];
+                }
             }
         }
         fclose($handle);
@@ -199,10 +242,112 @@ class ActivacionCicloModel extends Model
     }
 
     /**
+     * Lee las listas de grupos reales que manda la escuela (.xlsx, una hoja por
+     * grupo: "1A", "1B", "2A"... como las manda Vicente), para saber el grupo
+     * VERDADERO de un alumno en vez de adivinarlo (ver $revueltoCounter en
+     * clasificar()). También soporta la plantilla nueva de grupos (con celdas
+     * "Nivel educativo"/"Grado" y columna "Grupo").
+     *
+     * Estas listas son autosuficientes: no necesitan venir acompañadas del CSV
+     * general de matrículas para poder activar a secundaria (ver itemsDesdeGrupos()).
+     *
+     * @param string[] $rutasTemporales Rutas de los .xlsx subidos (uno o varios).
+     * @return array matricula (MAYÚSCULAS) => ['letra' => 'A', 'nivel' => 1]
+     */
+    public function parsearGruposReales(array $rutasTemporales)
+    {
+        $mapa = [];
+
+        foreach ($rutasTemporales as $ruta) {
+            try {
+                $spreadsheet = IOFactory::load($ruta);
+            } catch (\Throwable $e) {
+                continue; // archivo no legible: se ignora, no debe tumbar la previsualización
+            }
+
+            foreach ($spreadsheet->getAllSheets() as $ws) {
+                $nombreHoja = trim($ws->getTitle());
+
+                // Formato Vicente: hoja "1A", "2B", etc. -> numero+letra son el nivel y el grupo,
+                // la matrícula se saca del correo institucional (columna G).
+                if (preg_match('/^(\d+)\s*([A-Za-z])$/', $nombreHoja, $m)) {
+                    $nivel = (int) $m[1];
+                    $letra = strtoupper($m[2]);
+                    $maxRow = $ws->getHighestRow();
+                    for ($r = 1; $r <= $maxRow; $r++) {
+                        $correo = trim((string) $ws->getCell("G$r")->getValue());
+                        $mat = $this->matriculaDesdeCorreo($correo);
+                        if ($mat !== '') {
+                            $mapa[$mat] = ['letra' => $letra, 'nivel' => $nivel];
+                        }
+                    }
+                    continue;
+                }
+
+                // Plantilla nueva "con grupos": B1=Nivel, B2=Grado, columna B=Matricula, G=Grupo.
+                $etiqueta = trim((string) $ws->getCell('A4')->getValue());
+                if (strcasecmp($etiqueta, 'No') === 0) {
+                    $nivelTexto = strtoupper(trim((string) $ws->getCell('B1')->getValue()));
+                    $nivel = (int) trim((string) $ws->getCell('B2')->getValue());
+                    if ($nivelTexto === 'SECUNDARIA' && $nivel > 0) {
+                        $maxRow = $ws->getHighestRow();
+                        for ($r = 5; $r <= $maxRow; $r++) {
+                            $mat = $this->limpiarCelda($ws->getCell("B$r")->getValue());
+                            $letra = strtoupper(trim((string) $ws->getCell("G$r")->getValue()));
+                            if ($mat !== '' && $letra !== '' && $letra !== 'UNICO') {
+                                $mapa[strtoupper($mat)] = ['letra' => $letra, 'nivel' => $nivel];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * Construye items ['matricula','seccion','id_grado'=>null,'sec_nivel'] a partir
+     * de las listas de grupos, para las matrículas que NO vinieron ya en el CSV
+     * general (p. ej. si el CSV excluye secundaria a propósito). Así las listas de
+     * Vicente son suficientes por sí solas para activar secundaria, sin depender
+     * de que el CSV general también incluya esas filas.
+     *
+     * @param array $gruposReales  Salida de parsearGruposReales().
+     * @param array $matriculasYaCubiertas  Matrículas que ya vienen en $parseado['items'].
+     */
+    public function itemsDesdeGrupos(array $gruposReales, array $matriculasYaCubiertas)
+    {
+        $yaCubiertas = array_flip($matriculasYaCubiertas);
+        $items = [];
+        foreach ($gruposReales as $mat => $info) {
+            if (isset($yaCubiertas[$mat])) {
+                continue; // ya lo trae el CSV general; se resuelve como override en clasificar()
+            }
+            $items[] = [
+                'matricula' => $mat,
+                'seccion'   => "SECUNDARIA {$info['nivel']} (lista de grupos)",
+                'id_grado'  => null,
+                'sec_nivel' => (int) $info['nivel'],
+            ];
+        }
+        return $items;
+    }
+
+    private function matriculaDesdeCorreo($correo)
+    {
+        $correo = str_replace(["\xC2\xA0", "\xA0"], '', (string) $correo);
+        if (preg_match('/^([A-Za-z0-9]+)@/', trim($correo), $m)) {
+            return strtoupper($m[1]);
+        }
+        return '';
+    }
+
+    /**
      * Cruza matrículas contra la BD y las clasifica en:
      * listos (se activarán) y casos que se saltan (no encontradas / grado no reconocido / duplicadas).
      */
-    public function clasificar(array $parseado, int $idCiclo)
+    public function clasificar(array $parseado, int $idCiclo, array $gruposReales = [])
     {
         $items = $parseado['items'];
         $pendientes = $parseado['pendientes'] ?? [];  // filas sin matrícula -> llenar a mano
@@ -258,6 +403,7 @@ class ActivacionCicloModel extends Model
 
             $gradoActual = (int) $enBD[$mat]['grado'];
             $revuelto = false;
+            $grupoReal = false;
 
             // Resolver grado destino
             if ($it['id_grado'] !== null) {
@@ -266,12 +412,17 @@ class ActivacionCicloModel extends Model
                 // Secundaria SIN grupo en el archivo: definir A/B
                 $nivel = (int) $it['sec_nivel'];
 
-                if (in_array($gradoActual, $this->secA, true)) {
+                if (isset($gruposReales[$mat])) {
+                    // Prioridad 1: grupo REAL de las listas de la escuela (Vicente).
+                    // Manda sobre el grado anterior por si reacomodaron al alumno.
+                    $idGradoDestino = ($gruposReales[$mat]['letra'] === 'A') ? $this->secA[$nivel] : $this->secB[$nivel];
+                    $grupoReal = true;
+                } elseif (in_array($gradoActual, $this->secA, true)) {
                     $idGradoDestino = $this->secA[$nivel];        // continúa en grupo A
                 } elseif (in_array($gradoActual, $this->secB, true)) {
                     $idGradoDestino = $this->secB[$nivel];        // continúa en grupo B
                 } else {
-                    // No tiene grupo previo (sube de primaria / nuevo) -> REVOLVER balanceado A/B.
+                    // No tiene grupo previo ni viene en las listas reales -> REVOLVER balanceado A/B.
                     // (Sí tienen matrícula, así que se activan; los manuales son los SIN matrícula.)
                     $idGradoDestino = ($revueltoCounter % 2 === 0) ? $this->secA[$nivel] : $this->secB[$nivel];
                     $revueltoCounter++;
@@ -292,6 +443,7 @@ class ActivacionCicloModel extends Model
                 'seccion'      => $it['seccion'],
                 'grado_actual' => $gradoActual,
                 'revuelto'     => $revuelto,
+                'grupo_real'   => $grupoReal,
             ];
         }
 
@@ -324,6 +476,12 @@ class ActivacionCicloModel extends Model
         // Contraseña default CIFRADA (se calcula una sola vez, no en cada alumno).
         $passDefault = password_hash('123456789', PASSWORD_DEFAULT);
 
+        // Cachés por grado (no por alumno) para no repetir consultas pesadas.
+        $materiasPorGrado = [];
+        $existentesPorGrado = [];
+        $conObservacionesPorGrado = [];
+        $momentos = $this->db->table('meses_calificacion')->select('mes')->where('mes <=', 3)->orderBy('mes', 'ASC')->get()->getResultArray();
+
         foreach ($listos as $a) {
             $idUsr  = (int) $a['id_usr'];
             $idGrado = (int) $a['id_grado'];
@@ -338,8 +496,32 @@ class ActivacionCicloModel extends Model
             ]);
             $activados++;
 
-            // 2. Calificaciones + 3. Observaciones
-            $boletas += $this->generarBoletas($idUsr, $idGrado, $idCiclo);
+            // 2. Calificaciones + 3. Observaciones. Las materias y el "ya existe"
+            // se calculan UNA vez por grado (no por alumno): antes se repetian
+            // esas mismas consultas cientos de veces, contra una tabla de ~1M
+            // filas sin indice, y eso era lo que tronaba la carga por tiempo.
+            if (!isset($materiasPorGrado[$idGrado])) {
+                $materiasPorGrado[$idGrado] = $this->db->table('materia')
+                    ->select('Id_materia')->where('id_grados', $idGrado)
+                    ->get()->getResultArray();
+            }
+            $claveGradoCiclo = "$idGrado:$idCiclo";
+            if (!isset($existentesPorGrado[$claveGradoCiclo])) {
+                $existentesPorGrado[$claveGradoCiclo] = $this->cargarIdsConCalificaciones($idGrado, $idCiclo);
+            }
+            if (!isset($conObservacionesPorGrado[$claveGradoCiclo])) {
+                $conObservacionesPorGrado[$claveGradoCiclo] = $this->cargarIdsConObservaciones($idGrado, $idCiclo);
+            }
+
+            $boletas += $this->generarBoletas(
+                $idUsr,
+                $idGrado,
+                $idCiclo,
+                $materiasPorGrado[$idGrado],
+                isset($existentesPorGrado[$claveGradoCiclo][$idUsr]),
+                isset($conObservacionesPorGrado[$claveGradoCiclo][$idUsr]),
+                $momentos
+            );
         }
 
         // Dejar el ciclo nuevo como ACTIVO en el sistema (las 3 configs de nivel),
@@ -360,31 +542,49 @@ class ActivacionCicloModel extends Model
         ];
     }
 
+    /** Set (id_usr => true) de alumnos que YA tienen calificaciones para ese grado+ciclo. */
+    private function cargarIdsConCalificaciones(int $idGrado, int $idCiclo): array
+    {
+        $rows = $this->db->table('calificacion')
+                         ->distinct()
+                         ->select('id_usr')
+                         ->where('id_grado', $idGrado)
+                         ->where('cicloEscolar', $idCiclo)
+                         ->get()->getResultArray();
+        $set = [];
+        foreach ($rows as $r) $set[(int) $r['id_usr']] = true;
+        return $set;
+    }
+
+    /** Set (id_usr => true) de alumnos que YA tienen observaciones para ese grado+ciclo. */
+    private function cargarIdsConObservaciones(int $idGrado, int $idCiclo): array
+    {
+        $rows = $this->db->table('calificacion_observaciones')
+                         ->distinct()
+                         ->select('id_usr')
+                         ->where('id_grado', $idGrado)
+                         ->where('cicloEscolar', $idCiclo)
+                         ->get()->getResultArray();
+        $set = [];
+        foreach ($rows as $r) $set[(int) $r['id_usr']] = true;
+        return $set;
+    }
+
     /**
      * Genera calificaciones (materia × mes) + observaciones (momentos + general),
      * igual que recibe_excel.php. Idempotente: no duplica si ya existen.
+     * $materias, $yaExisten, $yaTieneObs y $momentos se calculan UNA vez por
+     * grado+ciclo en activarLote() y se reutilizan para todos sus alumnos.
      * @return int filas de calificación insertadas
      */
-    private function generarBoletas($idUsr, $idGrado, $idCiclo)
+    private function generarBoletas($idUsr, $idGrado, $idCiclo, array $materias, bool $yaExisten, bool $yaTieneObs, array $momentos)
     {
-        // IDEMPOTENCIA: si el alumno YA tiene calificaciones de este grado+ciclo,
-        // no volver a generar (evita duplicados si se re-activa el mismo archivo).
-        $yaExisten = $this->db->table('calificacion')
-                              ->where('id_usr', $idUsr)
-                              ->where('id_grado', $idGrado)
-                              ->where('cicloEscolar', $idCiclo)
-                              ->countAllResults();
-        if ($yaExisten > 0) {
+        if ($yaExisten || empty($materias)) {
             return 0;
         }
 
         $meses = $this->mesesDelGrado($idGrado);
         if ($meses === 0) {
-            return 0;
-        }
-
-        $materias = $this->db->table('materia')->select('Id_materia')->where('id_grados', $idGrado)->get()->getResultArray();
-        if (empty($materias)) {
             return 0;
         }
 
@@ -407,14 +607,7 @@ class ActivacionCicloModel extends Model
         }
 
         // --- Observaciones (una sola vez por alumno/grado/ciclo) ---
-        $yaTiene = $this->db->table('calificacion_observaciones')
-                            ->where('id_usr', $idUsr)
-                            ->where('id_grado', $idGrado)
-                            ->where('cicloEscolar', $idCiclo)
-                            ->countAllResults();
-        if ($yaTiene === 0) {
-            // Momentos (mes <= 3, igual que el viejo)
-            $momentos = $this->db->table('meses_calificacion')->select('mes')->where('mes <=', 3)->orderBy('mes', 'ASC')->get()->getResultArray();
+        if (!$yaTieneObs) {
             $obs = [];
             foreach ($momentos as $mo) {
                 $obs[] = ['id_usr' => $idUsr, 'id_momento' => (int) $mo['mes'], 'id_grado' => $idGrado, 'cicloEscolar' => $idCiclo];

@@ -99,7 +99,7 @@
 
             let url = `<?= base_url('niveles/fetch') ?>?page=${page}&columna=${ordenColumna}&orden=${ordenDireccion}&q=${encodeURIComponent(busquedaActual)}`;
 
-            fetch(url)
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(response => response.json())
                 .then(data => {
                     contenedor.innerHTML = data.html;

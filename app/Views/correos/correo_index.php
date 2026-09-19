@@ -235,7 +235,7 @@
             document.getElementById('seccionAdjunto').style.display = 'none';
             myModal.show();
 
-            fetch('<?= base_url("correo/ajax_ver/") ?>' + id)
+            fetch('<?= base_url("correo/ajax_ver/") ?>' + id, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(response => response.json())
                 .then(data => {
                     if (!data.error) {

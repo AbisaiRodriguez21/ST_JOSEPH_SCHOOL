@@ -99,7 +99,7 @@
                                                                 <small class="text-muted">Clic para descargar</small>
                                                             </div>
                                                             <div class="flex-shrink-0 ms-2">
-                                                                <a href="<?= base_url($c['adjunto']) ?>" target="_blank" class="text-reset font-size-18">
+                                                                <a href="<?= base_url('correo/adjunto/' . $c['id']) ?>" target="_blank" class="text-reset font-size-18">
                                                                     <i class="bx bxs-download"></i>
                                                                 </a>
                                                             </div>

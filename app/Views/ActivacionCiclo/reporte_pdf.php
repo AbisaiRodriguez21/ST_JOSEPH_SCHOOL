@@ -8,8 +8,9 @@ $gname = function ($id) use ($nombresGrado) {
     return $nombresGrado[$id] ?? ('Grado ' . $id);
 };
 $pendientes = $r['pendientes'] ?? [];
-$totalConMatricula = count($r['listos']) + count($r['noEncontradas'])
+$totalConMatricula = count($r['listos']) + count($r['yaActivos'] ?? []) + count($r['noEncontradas'])
                    + count($r['gradoNoReconocido']) + count($r['duplicadas']);
+$totalGeneral = $totalConMatricula + count($pendientes);
 ?>
 <style>
     * { font-family: DejaVu Sans, sans-serif; }
@@ -30,8 +31,13 @@ $totalConMatricula = count($r['listos']) + count($r['noEncontradas'])
 <p class="sub">
     Ciclo destino: <strong><?= esc($nombreCiclo) ?></strong> &nbsp;|&nbsp;
     Generado: <?= esc($fecha) ?> &nbsp;|&nbsp;
-    Por: <?= esc($usuario) ?> &nbsp;|&nbsp;
-    Con matrícula: <strong><?= $totalConMatricula ?></strong>
+    Por: <?= esc($usuario) ?>
+</p>
+<p class="sub">
+    <strong>Total de alumnos detectados en los archivos: <?= $totalGeneral ?></strong>
+    (<?= $totalConMatricula ?> con matrícula + <?= count($pendientes) ?> sin matrícula, pendientes de alta manual).
+    Esta suma debe coincidir con el total de alumnos de tus archivos de origen — si no coincide, algún alumno
+    se está perdiendo en el camino y hay que revisar el formato del archivo.
 </p>
 
 <h2>Resumen</h2>

@@ -22,18 +22,25 @@ class ActivacionCiclo extends BaseController
         $ciclos      = $model->getCiclos();
         $cicloActivo = $model->getCicloActivo();
 
-        // Ciclo sugerido = el SIGUIENTE al activo (al que normalmente se activa: el nuevo año).
-        $cicloSugerido = null;
-        foreach ($ciclos as $c) {
-            $id = (int) $c['id_cicloEscolar'];
-            if ($cicloActivo !== null && $id > $cicloActivo) {
-                if ($cicloSugerido === null || $id < $cicloSugerido) {
-                    $cicloSugerido = $id;
+        // Ciclo sugerido = el que toca segun la fecha de HOY (regla de agosto),
+        // no segun mesycicloactivo (que puede quedar desactualizado, p. ej.
+        // justo despues de reimportar la BD).
+        $cicloSugerido = $model->getCicloSugeridoPorFecha();
+
+        if ($cicloSugerido === null) {
+            // Respaldo: el catalogo no tiene de alta el ciclo que toca por fecha.
+            // Se cae al siguiente del activo, como antes.
+            foreach ($ciclos as $c) {
+                $id = (int) $c['id_cicloEscolar'];
+                if ($cicloActivo !== null && $id > $cicloActivo) {
+                    if ($cicloSugerido === null || $id < $cicloSugerido) {
+                        $cicloSugerido = $id;
+                    }
                 }
             }
         }
         if ($cicloSugerido === null) {
-            $cicloSugerido = $cicloActivo; // no hay uno más nuevo, cae al activo
+            $cicloSugerido = $cicloActivo; // ultimo recurso
         }
 
         return view('ActivacionCiclo/index', [
@@ -53,20 +60,55 @@ class ActivacionCiclo extends BaseController
             return redirect()->back()->with('error', 'Debes seleccionar un ciclo escolar destino.');
         }
 
-        $file = $this->request->getFile('archivo_csv');
-        if (!$file || !$file->isValid()) {
-            return redirect()->back()->with('error', 'El archivo no es válido.');
-        }
-        if (strtolower($file->getExtension()) !== 'csv') {
-            return redirect()->back()->with('error', 'El archivo debe ser CSV. Exporta el Excel de matrículas a .csv antes de subirlo.');
+        // Un solo campo de archivos: acepta .csv (matriculas generales, con o
+        // sin secundaria) y .xlsx (listas de grupos, formato Vicente o plantilla
+        // nueva) mezclados, en cualquier combinacion. Cada archivo se procesa
+        // segun su propia extension, sin necesidad de elegir el campo correcto.
+        $archivos = $this->request->getFiles()['archivos'] ?? [];
+        if (!is_array($archivos)) {
+            $archivos = [$archivos];
         }
 
-        $parseado = $model->parsearArchivo($file->getTempName());
+        $parseado = ['items' => [], 'pendientes' => []];
+        $rutasXlsx = [];
+        $seSubioAlgo = false;
+
+        foreach ($archivos as $af) {
+            if (!$af || !$af->isValid() || $af->hasMoved()) {
+                continue;
+            }
+            $seSubioAlgo = true;
+            $ext = strtolower($af->getExtension());
+            if ($ext === 'csv') {
+                $p = $model->parsearArchivo($af->getTempName());
+                $parseado['items'] = array_merge($parseado['items'], $p['items']);
+                $parseado['pendientes'] = array_merge($parseado['pendientes'], $p['pendientes']);
+            } elseif (in_array($ext, ['xlsx', 'xls'], true)) {
+                $rutasXlsx[] = $af->getTempName();
+            }
+        }
+
+        if (!$seSubioAlgo) {
+            return redirect()->back()->with('error', 'Sube al menos un archivo (.csv o .xlsx).');
+        }
+
+        // Listas de grupos reales: .xlsx de la escuela con el grupo A/B
+        // verdadero de secundaria, para no repartirlo al azar.
+        $gruposReales = [];
+        if (!empty($rutasXlsx)) {
+            $gruposReales = $model->parsearGruposReales($rutasXlsx);
+            // Las matrículas que no vengan ya en algun CSV (p. ej. porque se
+            // excluyó secundaria a propósito) se agregan directo: las listas
+            // de grupos bastan por sí solas para activar a esos alumnos.
+            $matriculasYaCubiertas = array_column($parseado['items'], 'matricula');
+            $parseado['items'] = array_merge($parseado['items'], $model->itemsDesdeGrupos($gruposReales, $matriculasYaCubiertas));
+        }
+
         if (empty($parseado['items'])) {
-            return redirect()->back()->with('error', 'No se encontró ninguna matrícula en el archivo. Revisa el formato.');
+            return redirect()->back()->with('error', 'No se encontró ninguna matrícula en los archivos subidos. Revisa el formato.');
         }
 
-        $clasificado = $model->clasificar($parseado, $idCiclo);
+        $clasificado = $model->clasificar($parseado, $idCiclo, $gruposReales);
 
         // Nombre legible del ciclo para mostrarlo
         $nombreCiclo = '';

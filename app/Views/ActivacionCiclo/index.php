@@ -39,12 +39,13 @@
                         <div class="card">
                             <div class="card-body">
 
-                                <h5 class="card-title mb-1">Subir archivo de matrículas</h5>
+                                <h5 class="card-title mb-1">Subir archivos</h5>
                                 <p class="text-muted mb-4">
-                                    Sube el archivo de matrículas del ciclo en formato <strong>.csv</strong>.
-                                    El sistema tomará las <strong>matrículas</strong> y su <strong>grado</strong>
-                                    (según la sección del archivo), buscará a cada alumno y lo activará en el ciclo
-                                    que elijas. Antes de aplicar verás una vista previa para revisar.
+                                    Sube uno o varios archivos: el <strong>.csv</strong> de matrículas generales,
+                                    los <strong>.xlsx</strong> de listas de grupos de secundaria, o ambos a la vez —
+                                    selecciónalos todos juntos, el sistema reconoce cada uno solo. El sistema tomará
+                                    las <strong>matrículas</strong> y su <strong>grado</strong>, buscará a cada alumno
+                                    y lo activará en el ciclo que elijas. Antes de aplicar verás una vista previa para revisar.
                                 </p>
 
                                 <form action="<?= base_url('activacion-ciclo/previsualizar') ?>"
@@ -71,9 +72,13 @@
                                     </div>
 
                                     <div class="mb-4">
-                                        <label class="form-label">Archivo CSV</label>
-                                        <input type="file" name="archivo_csv" class="form-control" accept=".csv" required>
-                                        <small class="text-muted">Solo archivos .csv exportados del Excel de matrículas.</small>
+                                        <label class="form-label">Archivos <span class="text-muted">(.csv y/o .xlsx, puedes elegir varios)</span></label>
+                                        <input type="file" name="archivos[]" class="form-control" accept=".csv,.xlsx" multiple required>
+                                        <small class="text-muted">
+                                            Puedes seleccionar el .csv de matrículas generales, los .xlsx de listas de
+                                            grupos de secundaria, o los dos tipos juntos en la misma selección — no
+                                            importa el orden ni cuáles subas, cada archivo se procesa según lo que es.
+                                        </small>
                                     </div>
 
                                     <div class="d-grid">
