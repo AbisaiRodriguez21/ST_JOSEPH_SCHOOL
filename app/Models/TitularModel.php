@@ -22,14 +22,17 @@ class TitularModel extends Model
 
     /**
      * Busca cualquier puesto ocupado por un usuario ACTIVO,
-     * sin importar si es Nivel 1 (Admin) o Nivel 9 (Titular).
+     * sin importar si es Nivel 2 (Director) o Nivel 9 (Titular).
      */
     public function getNivelesOcupados()
     {
-        return $this->select('nivelT')
-                    ->where('activo', 1)    
+        // '0' y '' como texto: comparar contra el número 0 excluía los nivelT
+        // de texto (MySQL convierte 'todoprimaria' a 0).
+        return $this->select('nivelT, email')
+                    ->where('activo', 1)
                     ->where('nivelT IS NOT NULL')
-                    ->where('nivelT !=', 0)
+                    ->where('nivelT !=', '0')
+                    ->where('nivelT !=', '')
                     ->findAll();
     }
 }

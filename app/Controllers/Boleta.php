@@ -1,6 +1,7 @@
 <?php namespace App\Controllers;
 
 use App\Models\BoletaModel;
+use App\Libraries\AlcanceDirector;
 
 class Boleta extends BaseController
 {
@@ -11,6 +12,10 @@ class Boleta extends BaseController
     // Pantalla 1: Lista de Alumnos por Grado
     public function lista_alumnos($id_grado)
     {
+        if (!AlcanceDirector::permiteGrado($id_grado)) {
+            return $this->_denegarGradoDirector();
+        }
+
         $model = new BoletaModel();
         $data['alumnos'] = $model->getAlumnosPorGrado($id_grado);
         $data['grado']   = $model->getInfoGrado($id_grado);
@@ -18,9 +23,38 @@ class Boleta extends BaseController
         return view('boletas/lista_alumnos', $data);
     }
 
+    // Quitar alumno de la lista: pasa a estatus 2 ("En proceso").
+    // No se borra nada; se puede reactivar desde Cambio de Grado / Activación de Ciclo.
+    public function quitar_alumno()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setBody('Prohibido');
+        }
+
+        $id_alumno = (int) $this->request->getPost('id');
+
+        if (!AlcanceDirector::permiteAlumno($id_alumno)) {
+            return $this->_denegarGradoDirector();
+        }
+
+        $db = \Config\Database::connect();
+        $alumno = $db->table('usr')->select('id')->where('id', $id_alumno)->where('nivel', 7)->get()->getRow();
+        if (!$alumno) {
+            return $this->response->setJSON(['status' => 'error', 'msg' => 'Alumno no encontrado.']);
+        }
+
+        $db->table('usr')->where('id', $id_alumno)->update(['estatus' => 2]);
+
+        return $this->response->setJSON(['status' => 'success', 'msg' => 'Alumno eliminado de la lista.']);
+    }
+
     // Pantalla 2: Ver Boleta (Switch Maestro)
     public function ver($id_grado, $id_alumno)
     {
+        if (!AlcanceDirector::permiteGrado($id_grado) || !AlcanceDirector::permiteAlumno($id_alumno)) {
+            return $this->_denegarGradoDirector();
+        }
+
         $model = new BoletaModel();
 
         // Datos básicos generales

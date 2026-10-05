@@ -23,6 +23,8 @@
 !/writable/session/index.html
 /writable/uploads/*
 !/writable/uploads/index.html
+/writable/backups/*
+!/writable/backups/index.html
 
 # Archivos subidos por usuarios (adjuntos de alumnos) - NUNCA en git
 /public/uploads/adjuntos/*

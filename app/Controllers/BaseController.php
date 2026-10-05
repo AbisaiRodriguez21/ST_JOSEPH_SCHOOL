@@ -79,4 +79,18 @@ abstract class BaseController extends Controller
 
         return true; // Acceso Permitido
     }
+
+    /**
+     * Respuesta cuando un director (nivel 2) intenta abrir un grado
+     * que no es de su nivel (ver App\Libraries\AlcanceDirector).
+     */
+    protected function _denegarGradoDirector()
+    {
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'msg' => 'Acceso denegado: ese grado no corresponde a tu nivel.']);
+        }
+
+        return redirect()->to(base_url('director/dashboard'))
+                         ->with('error', 'Acceso denegado: ese grado no corresponde a tu nivel.');
+    }
 }

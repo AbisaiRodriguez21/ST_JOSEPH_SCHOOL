@@ -1,6 +1,7 @@
 <?php namespace App\Controllers;
 
 use App\Models\CalificacionesModel;
+use App\Libraries\AlcanceDirector;
 
 class Calificaciones extends BaseController
 {
@@ -13,6 +14,10 @@ class Calificaciones extends BaseController
         
         if (!$session->has('id')) {
             return redirect()->to(base_url('login'));  
+        }
+
+        if (!AlcanceDirector::permiteGrado($id_grado)) {
+            return $this->_denegarGradoDirector();
         }
 
         // 2. Obtener el modelo
@@ -64,6 +69,14 @@ class Calificaciones extends BaseController
         
         if (!isset($valor) || !$id_usuario) {
             return $this->response->setJSON(['status' => 'error', 'msg' => 'Datos incompletos']);
+        }
+
+        // Director limitado a un nivel: validar el grado de la celda que edita
+        $permitido = !empty($id_cal)
+            ? AlcanceDirector::permiteCalificacion($id_cal)
+            : AlcanceDirector::permiteGrado($id_grado) && AlcanceDirector::permiteAlumno($id_alumno);
+        if (!$permitido) {
+            return $this->_denegarGradoDirector();
         }
 
         $model = new CalificacionesModel();
@@ -146,6 +159,8 @@ class Calificaciones extends BaseController
             }
         } elseif (!in_array($nivel, [1, 2], true)) {
             return redirect()->to(base_url('login'))->with('error', 'Acceso denegado.');
+        } elseif (!AlcanceDirector::permiteGrado($id_grado)) {
+            return $this->_denegarGradoDirector();
         }
 
         // 1. Recibir el Mes Customizado
@@ -367,6 +382,8 @@ class Calificaciones extends BaseController
             }
         } elseif (!in_array($nivel, [1, 2], true)) {
             return redirect()->to(base_url('login'))->with('error', 'Acceso denegado.');
+        } elseif (!AlcanceDirector::permiteGrado($id_grado_esperado)) {
+            return $this->_denegarGradoDirector();
         }
 
         $handle = fopen($file->getTempName(), 'r');

@@ -9,6 +9,9 @@ $grados_menu = [];
 if ($nivelUsuario == 1 || $nivelUsuario == 2) {
     $boletaModel = new BoletaModel();
     $grados_menu = $boletaModel->getGradosMenu();
+
+    // Director con nivelT (ej. 'todosecundaria'): solo los grados de su nivel
+    $grados_menu = \App\Libraries\AlcanceDirector::filtrarGrados($grados_menu);
 }
 ?>
 
@@ -304,6 +307,12 @@ if ($nivelUsuario == 1 || $nivelUsuario == 2) {
                     <a class="nav-link" href="<?= base_url('activacion-ciclo') ?>">
                         <span class="nav-icon"><iconify-icon icon="solar:refresh-circle-broken"></iconify-icon></span>
                         <span class="nav-text"> Activación de Ciclo </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= base_url('backup') ?>">
+                        <span class="nav-icon"><iconify-icon icon="solar:database-broken"></iconify-icon></span>
+                        <span class="nav-text"> Respaldos BD </span>
                     </a>
                 </li>
                 <li class="nav-item mt-4">

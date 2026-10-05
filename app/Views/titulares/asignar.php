@@ -38,7 +38,7 @@
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-body">
-                                <h4 class="header-title mb-4">Datos del Nuevo Titular</h4>
+                                <h4 class="header-title mb-4">Nuevo Titular o Director</h4>
 
                                 <form action="<?= base_url('asignar-titulares/guardar') ?>" method="post">
                                     
@@ -63,40 +63,37 @@
 
                                     <div class="row">
                                         <div class="col-md-4 mb-3">
-                                            <label class="form-label">Grado / Nivel a Asignar <span class="text-danger">*</span></label>
+                                            <label class="form-label">Puesto a asignar <span class="text-danger">*</span></label>
                                             <select class="form-select" name="nivelT" id="selectGrado" required>
                                                 <option value="">Seleccione...</option>
-                                                
-                                                <optgroup label="Coordinaciones Generales">
-                                                    <?php 
-                                                        $esp = [
-                                                            50 => 'Todo Primaria', 
-                                                            51 => 'Todo Secundaria', 
-                                                            52 => 'Todo Preparatoria'
-                                                        ];
-                                                        foreach ($esp as $val => $txt): 
-                                                            // Verificamos si está ocupado
-                                                            $bloqueado = in_array((string)$val, $ocupados);
+
+                                                <optgroup label="DIRECTOR · ve y califica todos los grados de su nivel">
+                                                    <?php foreach ($direcciones as $val => $txt):
+                                                        $asignadoA = $ocupados[(string)$val] ?? [];
+                                                        $bloqueado = !empty($asignadoA);
                                                     ?>
-                                                        <option value="<?= $val ?>" <?= $bloqueado ? 'disabled style="background-color:#e9ecef;"' : '' ?>>
-                                                            <?= $txt ?> <?= $bloqueado ? '(Asignado)' : '' ?>
+                                                        <!-- data-email: el correo usa el nivelT, ej. t-todosecundaria@sjs.edu.mx -->
+                                                        <option value="<?= $val ?>" data-email="<?= $val ?>" data-tipo="director" <?= $bloqueado ? 'disabled style="background-color:#e9ecef;"' : '' ?>>
+                                                            <?= $txt ?><?= $bloqueado ? ' — Asignado a ' . esc(implode(', ', $asignadoA)) : '' ?>
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </optgroup>
 
-                                                <optgroup label="Grados Escolares">
+                                                <optgroup label="TITULAR DE GRUPO · solo ve su propio grupo">
                                                     <?php if (!empty($grados)): ?>
                                                         <?php foreach ($grados as $grado): 
-                                                            $bloqueado = in_array((string)$grado['id_grado'], $ocupados);
+                                                            $asignadoA = $ocupados[(string)$grado['id_grado']] ?? [];
+                                                            $bloqueado = !empty($asignadoA);
                                                         ?>
-                                                            <option value="<?= $grado['id_grado'] ?>" <?= $bloqueado ? 'disabled style="background-color:#e9ecef;"' : '' ?>>
-                                                                <?= $grado['nombreGrado'] ?> <?= $bloqueado ? '(Asignado)' : '' ?>
+                                                            <option value="<?= $grado['id_grado'] ?>" data-tipo="titular" <?= $bloqueado ? 'disabled style="background-color:#e9ecef;"' : '' ?>>
+                                                                <?= $grado['nombreGrado'] ?><?= $bloqueado ? ' — Asignado a ' . esc(implode(', ', $asignadoA)) : '' ?>
                                                             </option>
                                                         <?php endforeach; ?>
                                                     <?php endif; ?>
                                                 </optgroup>
                                             </select>
-                                            <div class="form-text text-muted">Los grados en gris ya tienen un titular activo.</div>
+                                            <div class="form-text text-muted">Las opciones en gris ya tienen a alguien asignado.</div>
+                                            <div class="alert alert-info py-2 px-3 mt-2 mb-0 d-none" id="ayudaPuesto"></div>
                                         </div>
 
                                         <div class="col-md-4 mb-3">
@@ -112,7 +109,7 @@
 
                                     <div class="mt-3">
                                         <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save me-1"></i> Guardar Titular
+                                            <i class="fas fa-save me-1"></i> <span id="textoGuardar">Guardar</span>
                                         </button>
                                     </div>
 
@@ -128,6 +125,8 @@
         document.addEventListener("DOMContentLoaded", function() {
             const selectGrado = document.getElementById('selectGrado');
             const inputEmail = document.getElementById('inputEmail');
+            const ayudaPuesto = document.getElementById('ayudaPuesto');
+            const textoGuardar = document.getElementById('textoGuardar');
 
             selectGrado.addEventListener('change', function() {
                 let opcion = selectGrado.options[selectGrado.selectedIndex];
@@ -135,7 +134,22 @@
                 let textoOriginal = opcion.text.replace('(Asignado)', '').trim();
                 let valor = selectGrado.value;
 
-                if (valor) {
+                // Explicación de lo que se va a crear
+                if (opcion.dataset.tipo === 'director') {
+                    ayudaPuesto.innerHTML = `<b>Director:</b> verá y podrá calificar <b>todos</b> los grados de ${textoOriginal.replace('Director(a) de ', '')}.`;
+                    textoGuardar.textContent = 'Guardar Director';
+                } else if (opcion.dataset.tipo === 'titular') {
+                    ayudaPuesto.innerHTML = `<b>Titular:</b> solo verá y calificará el grupo <b>${textoOriginal}</b>.`;
+                    textoGuardar.textContent = 'Guardar Titular';
+                } else {
+                    textoGuardar.textContent = 'Guardar';
+                }
+                ayudaPuesto.classList.toggle('d-none', !opcion.dataset.tipo);
+
+                if (valor && opcion.dataset.email) {
+                    // Dirección: el correo se arma con el nivelT (ej. t-todosecundaria@sjs.edu.mx)
+                    inputEmail.value = `t-${opcion.dataset.email}@sjs.edu.mx`;
+                } else if (valor) {
                     // Quitamos espacios y pasamos a minúsculas para el correo
                     // Ej: "1° Primaria" -> "1°primaria"
                     let limpio = textoOriginal.replace(/\s+/g, '').toLowerCase();

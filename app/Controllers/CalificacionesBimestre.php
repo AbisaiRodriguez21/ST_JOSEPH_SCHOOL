@@ -1,7 +1,8 @@
 <?php namespace App\Controllers;
 
 use App\Models\CalificacionesBimestreModel;
-use App\Models\BoletaModel; 
+use App\Models\BoletaModel;
+use App\Libraries\AlcanceDirector;
 
 class CalificacionesBimestre extends BaseController
 {
@@ -12,6 +13,10 @@ class CalificacionesBimestre extends BaseController
     {
         $session = session();
         if (!$session->has('id')) { return redirect()->to('/login'); }
+
+        if (!AlcanceDirector::permiteGrado($id_grado)) {
+            return $this->_denegarGradoDirector();
+        }
 
         $model = new BoletaModel();
         $grado = $model->getInfoGrado($id_grado);
@@ -28,6 +33,10 @@ class CalificacionesBimestre extends BaseController
     {
         $session = session();
         if (!$session->has('id')) { return redirect()->to('/login'); }
+
+        if (!AlcanceDirector::permiteGrado($id_grado) || !AlcanceDirector::permiteAlumno($id_alumno)) {
+            return $this->_denegarGradoDirector();
+        }
 
         $modelBoleta = new BoletaModel();
         $alumno = $modelBoleta->getDatosAlumno($id_alumno);
@@ -502,6 +511,11 @@ class CalificacionesBimestre extends BaseController
 
         if ($nivel == 7) {
             return $this->response->setJSON(['status' => 'error', 'msg' => 'No tienes permisos.']);
+        }
+
+        if (!AlcanceDirector::permiteGrado($this->request->getPost('id_grado'))
+            || !AlcanceDirector::permiteAlumno($this->request->getPost('id_alumno'))) {
+            return $this->_denegarGradoDirector();
         }
 
         $model = new CalificacionesBimestreModel();

@@ -161,124 +161,58 @@
                 </div>
                 <br>
 
+                <?php if (session()->getFlashdata('error')): ?>
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <?= esc(session()->getFlashdata('error')) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php
+                // Solo se muestran los niveles con grados (el controlador ya filtró
+                // según el nivelT del director, ej. 'todosecundaria').
+                $niveles = array_filter([
+                    'kin' => ['Kinder', $kinder],
+                    'pri' => ['Primaria', $primaria],
+                    'sec' => ['Secundaria', $secundaria],
+                    'bac' => ['Bachillerato', $bachillerato],
+                ], static fn($n) => !empty($n[1]));
+                $tabActiva = isset($niveles['pri']) ? 'pri' : array_key_first($niveles);
+
+                $tarjetas = [
+                    ['id' => 'bol', 'titulo' => 'VER BOLETA/IMPRIMIR', 'icono' => '<i class="bx bx-expand" style="color:#ccc;"></i>', 'libro' => true, 'url' => 'boleta/lista/'],
+                    ['id' => 'sab', 'titulo' => 'CALIFICAR BOLETA BIMESTRE', 'icono' => '<i class="bx bx-table" style="color:#5c6bc0; font-size: 18px;"></i>', 'libro' => false, 'url' => 'director/seleccionar-periodo/'],
+                    ['id' => 'lis', 'titulo' => 'CALIFICAR BOLETA TODO BIMESTRE', 'icono' => '<i class="bx bx-expand" style="color:#ccc;"></i>', 'libro' => true, 'url' => 'calificaciones_bimestre/lista/'],
+                ];
+                ?>
+
                 <div class="row">
-                    
+                    <?php foreach ($tarjetas as $t): ?>
                     <div class="col-lg-4">
                         <div class="control-card">
                             <div class="control-header">
-                                <h5 class="control-title text-uppercase">VER BOLETA/IMPRIMIR</h5>
-                                <i class="bx bx-expand" style="color:#ccc;"></i>
+                                <h5 class="control-title text-uppercase"><?= $t['titulo'] ?></h5>
+                                <?= $t['icono'] ?>
                             </div>
                             <div class="card-body p-0">
-                                <ul class="nav nav-tabs nav-justified" id="tabsBoleta" role="tablist">
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#bol-kin"><i class="bx bx-book"></i> Kinder</a></li>
-                                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#bol-pri"><i class="bx bx-book"></i> Primaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#bol-sec"><i class="bx bx-book"></i> Secundaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#bol-bac"><i class="bx bx-book"></i> Bachillerato</a></li>
+                                <ul class="nav nav-tabs nav-justified" role="tablist">
+                                    <?php foreach ($niveles as $clave => [$etiqueta, $lista]): ?>
+                                        <li class="nav-item"><a class="nav-link<?= $clave === $tabActiva ? ' active' : '' ?>" data-bs-toggle="tab" href="#<?= $t['id'] ?>-<?= $clave ?>"><?= $t['libro'] ? '<i class="bx bx-book"></i> ' : '' ?><?= $etiqueta ?></a></li>
+                                    <?php endforeach; ?>
                                 </ul>
                                 <div class="tab-content p-3">
-                                    <div class="tab-pane fade" id="bol-kin">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($kinder as $g): ?><li><a href="<?= base_url('boleta/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade show active" id="bol-pri">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($primaria as $g): ?><li><a href="<?= base_url('boleta/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="bol-sec">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($secundaria as $g): ?><li><a href="<?= base_url('boleta/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="bol-bac">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($bachillerato as $g): ?><li><a href="<?= base_url('boleta/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
+                                    <?php foreach ($niveles as $clave => [$etiqueta, $lista]): ?>
+                                        <div class="tab-pane fade<?= $clave === $tabActiva ? ' show active' : '' ?>" id="<?= $t['id'] ?>-<?= $clave ?>">
+                                            <ul class="grupo-lista">
+                                                <?php foreach ($lista as $g): ?><li><a href="<?= base_url($t['url'] . $g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
+                                            </ul>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-lg-4">
-                        <div class="control-card">
-                            <div class="control-header">
-                                <h5 class="control-title text-uppercase">CALIFICAR BOLETA BIMESTRE</h5>
-                                <i class="bx bx-table" style="color:#5c6bc0; font-size: 18px;"></i>
-                            </div>
-                            <div class="card-body p-0">
-                                <ul class="nav nav-tabs nav-justified" id="tabsSabana" role="tablist">
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sab-kin">Kinder</a></li>
-                                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#sab-pri">Primaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sab-sec">Secundaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sab-bac">Bachillerato</a></li>
-                                </ul>
-                                <div class="tab-content p-3">
-                                    <div class="tab-pane fade" id="sab-kin">
-                                        <ul class="grupo-lista">
-                                            <?php foreach ($kinder as $g): ?><li><a href="<?= base_url('director/seleccionar-periodo/' . $g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade show active" id="sab-pri">
-                                        <ul class="grupo-lista">
-                                            <?php foreach ($primaria as $g): ?><li><a href="<?= base_url('director/seleccionar-periodo/' . $g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="sab-sec">
-                                        <ul class="grupo-lista">
-                                            <?php foreach ($secundaria as $g): ?><li><a href="<?= base_url('director/seleccionar-periodo/' . $g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="sab-bac">
-                                        <ul class="grupo-lista">
-                                            <?php foreach ($bachillerato as $g): ?><li><a href="<?= base_url('director/seleccionar-periodo/' . $g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="control-card">
-                            <div class="control-header">
-                                <h5 class="control-title text-uppercase">CALIFICAR BOLETA TODO BIMESTRE</h5>
-                                <i class="bx bx-expand" style="color:#ccc;"></i>
-                            </div>
-                            <div class="card-body p-0">
-                                <ul class="nav nav-tabs nav-justified" id="tabsLista" role="tablist">
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lis-kin"><i class="bx bx-book"></i> Kinder</a></li>
-                                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#lis-pri"><i class="bx bx-book"></i> Primaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lis-sec"><i class="bx bx-book"></i> Secundaria</a></li>
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lis-bac"><i class="bx bx-book"></i> Bachillerato</a></li>
-                                </ul>
-                                <div class="tab-content p-3">
-                                    <div class="tab-pane fade" id="lis-kin">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($kinder as $g): ?><li><a href="<?= base_url('calificaciones_bimestre/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade show active" id="lis-pri">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($primaria as $g): ?><li><a href="<?= base_url('calificaciones_bimestre/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="lis-sec">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($secundaria as $g): ?><li><a href="<?= base_url('calificaciones_bimestre/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                    <div class="tab-pane fade" id="lis-bac">
-                                        <ul class="grupo-lista">
-                                            <?php foreach($bachillerato as $g): ?><li><a href="<?= base_url('calificaciones_bimestre/lista/'.$g['id_grado']) ?>"><?= esc($g['nombreGrado']) ?></a></li><?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
 
                 </div> </div> 
         </div> 

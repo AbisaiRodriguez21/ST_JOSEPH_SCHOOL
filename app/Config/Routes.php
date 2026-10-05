@@ -203,6 +203,13 @@ $routes->group('', ['filter' => 'adminAuth'], function ($routes) {
     // Configuración Global
     $routes->get('globalconfig/getDatos/(:num)', 'GlobalConfig::getDatos/$1');
     $routes->post('globalconfig/update', 'GlobalConfig::update');
+
+    // Respaldos de Base de Datos
+    $routes->get('backup', 'Admin\Backup::index');
+    $routes->get('backup/descargar/(:segment)', 'Admin\Backup::descargar/$1');
+    $routes->post('backup/eliminar/(:segment)', 'Admin\Backup::eliminar/$1');
+    $routes->post('backup/eliminar-todo', 'Admin\Backup::eliminarTodo');
+    $routes->post('backup/generar', 'Admin\Backup::generar');
 });
 
 // =============================================================================
@@ -224,7 +231,8 @@ $routes->group('', ['filter' => 'academicoAuth'], function($routes) {
     // Boletas
     $routes->get('boleta/lista/(:num)', 'Boleta::lista_alumnos/$1');
     $routes->get('boleta/ver/(:num)/(:num)', 'Boleta::ver/$1/$2');
-    
+    $routes->post('boleta/quitar-alumno', 'Boleta::quitar_alumno');
+
     // Sábana de calificaciones (Acepta solo grado o grado + periodo)
     $routes->get('boleta/calificar/(:num)', 'Calificaciones::editar/$1');
     $routes->get('boleta/calificar/(:num)/(:num)', 'Calificaciones::editar/$1/$2'); 

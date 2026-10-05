@@ -4,6 +4,7 @@ namespace App\Controllers\Director;
 
 use App\Controllers\BaseController;
 use App\Models\CalificacionesModel;
+use App\Libraries\AlcanceDirector;
 
 class DashboardDirector extends BaseController
 {
@@ -26,7 +27,10 @@ class DashboardDirector extends BaseController
         $passwordReal = $usuario ? $usuario['pass'] : '';
 
         $grados = $db->table('grados')->orderBy('nivel_grado', 'ASC')->get()->getResultArray();
-        
+
+        // Director con nivelT (ej. 'todosecundaria'): solo los grados de su nivel
+        $grados = AlcanceDirector::filtrarGrados($grados);
+
         $data = [
             'nombre'         => $session->get('nombre'),
             'apellidos'      => $session->get('apellidos'),
@@ -60,6 +64,10 @@ class DashboardDirector extends BaseController
     
     public function seleccionarPeriodo($id_grado)
     {
+        if (!AlcanceDirector::permiteGrado($id_grado)) {
+            return $this->_denegarGradoDirector();
+        }
+
         $db = \Config\Database::connect();
 
         // 1. Consultar qué NIVEL EDUCATIVO es ese grado
