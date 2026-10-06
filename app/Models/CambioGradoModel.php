@@ -1,6 +1,7 @@
 <?php namespace App\Models;
 
 use CodeIgniter\Model;
+use App\Libraries\TextoBusqueda;
 
 class CambioGradoModel extends Model
 {
@@ -11,22 +12,51 @@ class CambioGradoModel extends Model
     
     public function getAlumnos($busqueda = null, $porPagina = 20)
     {
+        // Se calcula ANTES de armar el builder del modelo (usa su propia consulta)
+        $palabras = TextoBusqueda::palabras($busqueda);
+        $idsCoinciden = $palabras ? $this->idsQueCoinciden($palabras) : null;
+
         $builder = $this->select('usr.*, grados.nombreGrado, estatus_usr.nombre as nombre_estatus')
                         ->join('grados', 'usr.grado = grados.Id_grado', 'left')
                         ->join('estatus_usr', 'usr.estatus = estatus_usr.Id', 'left')
                         ->where('usr.nivel', 7)
                         ->where('usr.activo', 1);
 
-        if (!empty($busqueda)) {
-            $builder->groupStart()
-                    ->like('usr.Nombre', $busqueda)
-                    ->orLike('usr.ap_Alumno', $busqueda)
-                    ->orLike('usr.am_Alumno', $busqueda)
-                    ->orLike('usr.email', $busqueda)
-                    ->groupEnd();
+        if ($idsCoinciden !== null) {
+            // [0] = ningún resultado (whereIn con arreglo vacío no es válido)
+            $builder->whereIn('usr.id', $idsCoinciden ?: [0]);
         }
-        $builder->orderBy('usr.ap_Alumno', 'ASC');
+
+        $builder->orderBy('usr.ap_Alumno', 'ASC')
+                ->orderBy('usr.am_Alumno', 'ASC')
+                ->orderBy('usr.Nombre', 'ASC');
         return $this->paginate($porPagina);
+    }
+
+    /**
+     * Búsqueda tolerante: sin importar acentos, mayúsculas, comas, espacios ni el
+     * orden de las palabras ("perez juan" = "Juan Pérez"). Cada palabra debe aparecer
+     * en el nombre, apellidos, correo o matrícula.
+     */
+    private function idsQueCoinciden(array $palabras): array
+    {
+        $alumnos = $this->db->table('usr')
+                            ->select('id, Nombre, ap_Alumno, am_Alumno, email, matricula')
+                            ->where('nivel', 7)
+                            ->where('activo', 1)
+                            ->get()->getResultArray();
+
+        $ids = [];
+        foreach ($alumnos as $a) {
+            $texto = TextoBusqueda::normalizar(
+                "{$a['Nombre']} {$a['ap_Alumno']} {$a['am_Alumno']} {$a['email']} {$a['matricula']}"
+            );
+            if (TextoBusqueda::coincide($palabras, $texto)) {
+                $ids[] = (int) $a['id'];
+            }
+        }
+
+        return $ids;
     }
 
     public function getAlumnoDetalle($id)

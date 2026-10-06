@@ -22,6 +22,8 @@ class AlumnoBachillerModel extends Model
                     ->where('usr.estatus', 1)     
                     ->where('usr.grado', 33)      // ID específico de 3° Bachiller
                     ->orderBy('usr.ap_Alumno', 'ASC')
+                    ->orderBy('usr.am_Alumno', 'ASC')
+                    ->orderBy('usr.Nombre', 'ASC')
                     ->paginate($perPage);
     }
 

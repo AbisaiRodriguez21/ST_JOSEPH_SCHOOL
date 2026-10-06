@@ -34,7 +34,9 @@ class GruposModel extends Model {
             $builder->where('usr.grado', $gradoId);
         }
 
-        $builder->orderBy('usr.ap_Alumno', 'ASC'); 
+        $builder->orderBy('usr.ap_Alumno', 'ASC')
+                ->orderBy('usr.am_Alumno', 'ASC')
+                ->orderBy('usr.Nombre', 'ASC');
         
         return $builder->get()->getResultArray();
     }

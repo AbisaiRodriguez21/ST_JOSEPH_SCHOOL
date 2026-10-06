@@ -126,6 +126,8 @@ class BoletaModel extends Model
             ->where('estatus', 1)       
             ->where('nivel', 7)        
             ->orderBy('ap_Alumno', 'ASC')
+            ->orderBy('am_Alumno', 'ASC')
+            ->orderBy('Nombre', 'ASC')
             ->get()->getResultArray();
     }
 
