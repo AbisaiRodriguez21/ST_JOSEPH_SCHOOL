@@ -526,7 +526,14 @@ class ActivacionCicloModel extends Model
 
         // Dejar el ciclo nuevo como ACTIVO en el sistema (las 3 configs de nivel),
         // para que las boletas y calificaciones ya usen este ciclo por default.
-        $this->db->table('mesycicloactivo')->update(['id_ciclo' => $idCiclo]);
+        // Si el ciclo CAMBIA, el mes/periodo regresa al primero (Sep / 1er periodo /
+        // 1a evaluación); si no, el que se configuró se deja intacto (se activa por
+        // partes durante el ciclo). MySQL asigna de izquierda a derecha, así que
+        // id_mes se evalúa con el id_ciclo anterior.
+        $this->db->query(
+            'UPDATE mesycicloactivo SET id_mes = IF(id_ciclo <> ?, 1, id_mes), id_ciclo = ?',
+            [$idCiclo, $idCiclo]
+        );
 
         $this->db->transComplete();
 

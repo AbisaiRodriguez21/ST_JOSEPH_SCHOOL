@@ -59,7 +59,9 @@
         console.log("Pidiendo datos a:", url); // Para que lo veas en F12 -> Console
 
         // 3. Petición AJAX
-        fetch(url)
+        // El servidor solo responde a peticiones AJAX (GlobalConfig::getDatos); sin
+        // este encabezado regresa 403 y el modal muestra "Error al cargar".
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => {
                 if (!response.ok) {
                     throw new Error("Error HTTP: " + response.status);
