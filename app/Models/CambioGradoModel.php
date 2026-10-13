@@ -178,11 +178,29 @@ class CambioGradoModel extends Model
                        ->get()
                        ->getResultArray();
 
-        // C. Insertar calificaciones vacías
+        // C. Calificaciones que el alumno YA tiene en este grado+ciclo (materia:mes).
+        // La tabla no tiene llave única, así que ignore(true) no evita duplicados:
+        // si se reactiva a un alumno que ya tenía sus filas (p. ej. por Activación
+        // de Ciclo), se creaban otras 360 y la sábana/boleta mostraban la copia vacía.
+        $existentes = [];
+        $rows = $db->table('calificacion')
+                   ->select('id_materia, id_mes')
+                   ->where('id_usr', $idAlumno)
+                   ->where('id_grado', $idGrado)
+                   ->where('cicloEscolar', $idCiclo)
+                   ->get()->getResultArray();
+        foreach ($rows as $r) {
+            $existentes[$r['id_materia'] . ':' . $r['id_mes']] = true;
+        }
+
+        // D. Insertar solo las calificaciones vacías que falten
         if (!empty($materias)) {
             $dataBatch = [];
             foreach ($materias as $mat) {
                 for ($i = 1; $i <= $meses; $i++) {
+                    if (isset($existentes[$mat['Id_materia'] . ':' . $i])) {
+                        continue;
+                    }
                     $dataBatch[] = [
                         'id_usr'       => $idAlumno,
                         'id_materia'   => $mat['Id_materia'],
@@ -196,8 +214,7 @@ class CambioGradoModel extends Model
             
             // Insertar todo de un golpe  
             if (!empty($dataBatch)) {
-                // Usamos ignore(true) para que si ya existen no de error
-                $db->table('calificacion')->ignore(true)->insertBatch($dataBatch);
+                $db->table('calificacion')->insertBatch($dataBatch);
             }
         }
     }
